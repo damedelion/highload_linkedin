@@ -215,7 +215,7 @@ BGP Anycast для маршрутизации трафика в ближайши
 ## 5. Логическая схема БД
 
 ### Схема БД
-![](images/db_linkedin_mvp.png)
+![](images/db_linkedin_mvp.svg)
 
 ### Описание таблиц
 
