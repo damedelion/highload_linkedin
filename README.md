@@ -243,8 +243,51 @@ BGP Anycast для маршрутизации трафика в ближайши
    чтение: ~1 RPS
    запись: ~300 RPS
 
+## 6. Физическая схема БД
+
+![](images/db_linkedin_denorm.svg)
+
+#### Выбор СУБД для хранения таблиц 
+
+| Таблица               | Тип данных | Рекомендуемая СУБД |
+|----------------------|------------|------------------|
+| user            | Пользователи, аутентификация | PostgreSQL |
+| session         | Сессии пользователей | PostgreSQL |
+| company         | Компании, работодатели | PostgreSQL |
+| worker          | Сотрудники компаний | PostgreSQL |
+| vacancy         | Вакансии компаний | PostgreSQL |
+| vacancy_response| Отклики на вакансии | PostgreSQL |
+| connection      | Друзья и подписки | PostgreSQL |
+| connection_request | Запросы на добавление в друзья | PostgreSQL |
+| post           | Посты пользователей | Cassandra |
+| like           | Лайки под постами | Cassandra |
+| comment        | Комментарии к постам | Cassandra |
+| message        | Личные сообщения | Cassandra |
+| repost         | Репосты записей | Cassandra |
+| Кэш |  | Redis |
+| Медиа |  | AWS S3 |
 
 
+#### Индексы
+- `session(user_id)` – индекс для поиска активных сессий  
+- `company(name)` – индекс для поиска компаний по названию  
+- `worker(company_id, role)` – индекс для поиска сотрудников по компании и роли  
+- `vacancy(company_id, is_active)` – индекс для поиска активных вакансий  
+- `vacancy_response(user_id)`, `vacancy_response(vacancy_id, status)` – индексы для откликов  
+- `connection(user1_id, user2_id)`, `connection_request(sender_id, receiver_id, status)` – индексы для друзей  
+- `post(user_id, created_at DESC)` – индекс для получения постов пользователя  
+- `like(post_id, created_at DESC)`, `comment(post_id, created_at DESC)` – индексы для быстрого поиска  
+- `message(sender_id, receiver_id, created_at DESC)`, `message(receiver_id, sender_id, created_at DESC)` – индексы для поиска сообщений  
+- `repost(user_id, created_at DESC)` – индекс для поиска репостов
+
+#### Шардирование
+- user по `id`
+- session по `user_id`
+- vacancy_response по `vacancy_id`
+- post по `user_id`
+- like по `post_id`
+- comment по `post_id`
+- message по `(sender_id, receiver_id)`
 
 
 
