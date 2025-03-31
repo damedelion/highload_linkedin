@@ -215,57 +215,51 @@ BGP Anycast для маршрутизации трафика в ближайши
 ## 5. Логическая схема БД
 
 ### Схема БД
-![](images/db_linkedin_mvp.svg)
-
-### Описание таблиц
-
-- `user`: информация о пользователе
-   чтение: ~2K RPS
-   запись: ~3 RPS
-- `post`: информация о посте
-   чтение: ~29K RPS
-   запись: ~23 RPS
-- `comment`: информация о комментарии
-   чтение: ~29K RPS
-   запись: ~70 RPS
-- `like`: информация о лайке
-   чтение: ~29K RPS
-   запись: ~550 RPS
-- `company`: информация о компании
-- `vacancy`: информация о вакансии
-   чтение: ~2K RPS
-   запись: ~1 RPS
-- `vacancy_response`: информация об отклике на вакансию
-   чтение: ~1 RPS
-   запись: ~185 RPS
-- `connection`: информация о связи
-- `connection_request`: информация о запросе на создание связи
-   чтение: ~1 RPS
-   запись: ~300 RPS
+![](images/linkedin_db_logic.svg)
 
 ## 6. Физическая схема БД
 
-![](images/db_linkedin_denorm.svg)
+![](images/linkedin_db_denorm.svg)
 
 #### Выбор СУБД для хранения таблиц 
 
-| Таблица               | Тип данных | Рекомендуемая СУБД |
+| Таблица               | Тип данных | СУБД |
 |----------------------|------------|------------------|
-| user            | Пользователи, аутентификация | PostgreSQL |
-| session         | Сессии пользователей | PostgreSQL |
-| company         | Компании, работодатели | PostgreSQL |
-| worker          | Сотрудники компаний | PostgreSQL |
-| vacancy         | Вакансии компаний | PostgreSQL |
-| vacancy_response| Отклики на вакансии | PostgreSQL |
-| connection      | Друзья и подписки | PostgreSQL |
-| connection_request | Запросы на добавление в друзья | PostgreSQL |
+| user            | Пользователи, аутентификация | Cassandra |
+| session         | Сессии пользователей | Redis |
+| company         | Компании, работодатели | Cassandra |
+| worker          | Сотрудники компаний | Cassandra |
+| vacancy         | Вакансии компаний | Cassandra |
+| vacancy_response| Отклики на вакансии | Cassandra |
+| connection      | Друзья и подписки | Cassandra |
+| connection_request | Запросы на добавление в друзья | Cassandra |
 | post           | Посты пользователей | Cassandra |
 | like           | Лайки под постами | Cassandra |
 | comment        | Комментарии к постам | Cassandra |
 | message        | Личные сообщения | Cassandra |
 | repost         | Репосты записей | Cassandra |
+| search_index | Поиск | ElasticSearch |
 | Кэш |  | Redis |
 | Медиа |  | AWS S3 |
+
+#### Размер данных
+
+| Таблица | Размер данных, Гб |
+|---|---|
+| user | 409.78 |
+| session  | 37392.60 |
+| company | 19.28 |
+| post | 2804.45 |
+| worker | 96.39 |
+| vacancy | 5.63 |
+| vacancy_response | 11217.78 |
+| connection | 7478.52 |
+| connection_request | 1794.84 |
+| like | 11965.63 |
+| comment | 4487.11 |
+| message | 112177.80 |
+| repost | 252.40 |
+| search_index | 653.23 |
 
 
 #### Индексы
