@@ -189,7 +189,7 @@ DAU ~134M[^4]
 | --- | --- | --- |
 | Орегон | 830 | 2.5K |
 | Вирджиния | 830 | 2.5K |
-| Франкфурт | 970 | 27K|
+| Франкфурт | 970 | 2.7K|
 | Лондон | 970 | 2.9K |
 | Токио | 970 | 2.9K |
 | Сингапур | 1K | 3K |
@@ -223,65 +223,46 @@ BGP Anycast для маршрутизации трафика в ближайши
 
 #### Выбор СУБД для хранения таблиц 
 
-| Таблица               | Тип данных | СУБД |
-|----------------------|------------|------------------|
-| user            | Пользователи, аутентификация | Cassandra |
-| session         | Сессии пользователей | Redis |
-| company         | Компании, работодатели | Cassandra |
-| worker          | Сотрудники компаний | Cassandra |
-| vacancy         | Вакансии компаний | Cassandra |
-| vacancy_response| Отклики на вакансии | Cassandra |
-| connection      | Друзья и подписки | Cassandra |
-| connection_request | Запросы на добавление в друзья | Cassandra |
-| post           | Посты пользователей | Cassandra |
-| like           | Лайки под постами | Cassandra |
-| comment        | Комментарии к постам | Cassandra |
-| message        | Личные сообщения | Cassandra |
-| repost         | Репосты записей | Cassandra |
-| search_index | Поиск | ElasticSearch |
-| Кэш |  | Redis |
-| Медиа |  | AWS S3 |
+Для расчета количества записей будем считать статистику за 5 лет
 
-#### Размер данных
+| Таблица | Тип данных | Количество записей | Размер данных | Нагрузка на чтение | Нагрузка на запись | СУБД |
+| --- | --- | --- | --- | --- | --- | --- |
+| user | Пользователи, аутентификация | 1.1B | 409.78 GB | ~1 RPS | 3 RPS | Cassandra |
+| session | Сессии пользователей | 1.1B | 123.2 GB | 1.5K RPS | 3 RPS | Redis |
+| company | Компании, работодатели | 67M | 19.28 GB | ~185 RPS | ~1 RPS | Cassandra |
+| worker | Сотрудники компаний | 6.7B | 96.39 GB | ~1 RPS | ~1 RPS | Cassandra |
+| vacancy | Вакансии компаний | 150M | 5.63 GB | 20 RPS | 1 RPS | Cassandra |
+| vacancy_response | Отклики на вакансии | 29.2B | 11.22 TB | ~1 RPS | 185 RPS | Cassandra |
+| connection | Связи между пользователями | 1430B | 7.48 TB | ~1 RPS | 300 RPS | Cassandra |
+| connection_request | Запросы на создание связи | 47B | 1.79 TB | ~300 RPS | 300 RPS | Cassandra |
+| post | Посты пользователей | 3.6B | 2.80 TB | 2.8K RPS | 20 RPS | Cassandra |
+| like | Лайки под постами | 87.6M | 11.97 GB | ~1 RPS | 550 RPS | Cassandra |
+| comment | Комментарии к постам | 5.5B | 4.49 TB | ~1 RPS | 7 RPS | Cassandra |
+| repost | Репосты | 36M | 252.4 GB | ~1 RPS | ~1 RPS | Cassandra |
+| counter | Статистика постов | 3.6B | 216 GB | 2.8K RPS | 560 RPS | Kafka, Cassandra |
+| chat | Информация о чате | 22B | 620 GB | 1.2K RPS | ~1 RPS | Cassandra |
+| user_chat | Участники чата | 110B | 3.1 TB | 1.2K RPS | ~1 RPS | Cassandra |
+| message | Сообщения в чате | 182.5B | 112.18 TB | 1.2K RPS | 1.2K RPS | Cassandra |
+| search_index | Поиск | 4.9B | 653.23 GB | 460 RPS | 25 RPS | ElasticSearch |
+|  | Кэш |  |  |  |  | Redis |
+|  | Медиа |  |  |  |  | AWS S3 |
 
-| Таблица | Размер данных, Гб |
-|---|---|
-| user | 409.78 |
-| session  | 37392.60 |
-| company | 19.28 |
-| post | 2804.45 |
-| worker | 96.39 |
-| vacancy | 5.63 |
-| vacancy_response | 11217.78 |
-| connection | 7478.52 |
-| connection_request | 1794.84 |
-| like | 11965.63 |
-| comment | 4487.11 |
-| message | 112177.80 |
-| repost | 252.40 |
-| search_index | 653.23 |
-
-
-#### Индексы
-- `session(user_id)` – индекс для поиска активных сессий  
-- `company(name)` – индекс для поиска компаний по названию  
-- `worker(company_id, role)` – индекс для поиска сотрудников по компании и роли  
-- `vacancy(company_id, is_active)` – индекс для поиска активных вакансий  
-- `vacancy_response(user_id)`, `vacancy_response(vacancy_id, status)` – индексы для откликов  
-- `connection(user1_id, user2_id)`, `connection_request(sender_id, receiver_id, status)` – индексы для друзей  
-- `post(user_id, created_at DESC)` – индекс для получения постов пользователя  
-- `like(post_id, created_at DESC)`, `comment(post_id, created_at DESC)` – индексы для быстрого поиска  
-- `message(sender_id, receiver_id, created_at DESC)`, `message(receiver_id, sender_id, created_at DESC)` – индексы для поиска сообщений  
-- `repost(user_id, created_at DESC)` – индекс для поиска репостов
 
 #### Шардирование
 - user по `id`
 - session по `user_id`
-- vacancy_response по `vacancy_id`
+- vacancy_response по `vacancy_id` (просмотр откликов на вакансию происходит чаще, чем пользователь просматривает все свои отклики, поэтому выгоднее, чем по `user_id`)
+- connection по `user1_id`
+- connection_request по `receiver_id` (нужно смотреть все отправлены запросы)
 - post по `user_id`
 - like по `post_id`
 - comment по `post_id`
-- message по `(sender_id, receiver_id)`
+- chat по `id`
+- user_chat по `user_id` (важнее показать пользователю все его чаты, чем загрузить участников чата)
+- message по `chat_id`
+
+#### Резервирование
+- в Cassandra использовать репликацию с 3мя репликами в каждом дата-центре с уровнем консистентности LOCAL_QUORUM и стратегией NetworkTopologyStrategy. Такая схема позволяет расположить реплики на разных стойках в одном дата-центре, обеспечить консистентность данных и минимизировать задержки внутри дата-центра
 
 
 ## 8. Технологии
