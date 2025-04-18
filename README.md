@@ -239,7 +239,9 @@ BGP Anycast для маршрутизации трафика в ближайши
 | like | Лайки под постами | 87.6M | 11.97 GB | ~1 RPS | 550 RPS | Cassandra |
 | comment | Комментарии к постам | 5.5B | 4.49 TB | ~1 RPS | 7 RPS | Cassandra |
 | repost | Репосты | 36M | 252.4 GB | ~1 RPS | ~1 RPS | Cassandra |
-| counter | Статистика постов | 3.6B | 216 GB | 2.8K RPS | 560 RPS | Kafka, Cassandra |
+| like_counter | Статистика лайков | 3.6B | 216 GB | 2.8K RPS | 550 RPS | Kafka, Cassandra |
+| comment_counter | Статистика комментариев | 3.6B | 216 GB | 2.8K RPS | 7 RPS | Kafka, Cassandra |
+| repost_counter | Статистика репостов | 3.6B | 216 GB | 2.8K RPS | ~1 RPS | Kafka, Cassandra |
 | chat | Информация о чате | 22B | 620 GB | 1.2K RPS | ~1 RPS | Cassandra |
 | user_chat | Участники чата | 110B | 3.1 TB | 1.2K RPS | ~1 RPS | Cassandra |
 | message | Сообщения в чате | 182.5B | 112.18 TB | 1.2K RPS | 1.2K RPS | Cassandra |
@@ -248,18 +250,36 @@ BGP Anycast для маршрутизации трафика в ближайши
 |  | Медиа |  |  |  |  | AWS S3 |
 
 
+#### Индексы
+Большая часть данныз хранится в Cassandra -- NoSQL БД, в которой основным механизмом эффективного доступа является партиционириование с использованием `PRIMARY KEY`, состоящего из `partition key` (уникальный ключ) и `clustering columns` (столбцы, на основе которых происходит кластеризация данных), а не применение индексов:
+- `user`: `(id)`
+- `company`: `(id)`
+- `worker`: `((company_id), role, is_active)`
+- `vacancy`: `((company_id), is_active, created_at)`
+- `vacancy_response`: `((vacancy_id), user_id)`
+- `connection`: `((user1_id), user2_id)`
+- `connection_request`:	`((receiver_id), status, created_at)`
+- `post`: `((user_id), created_at)`
+- `like`, `comment`, `repost`: `((post_id), user_id, created_at)`
+- `like_counter`, `comment_counter`, `repost_counter`: `(post_id)`
+- `chat`: `(id)`
+- `user_chat`:	`((user_id), chat_id)`
+- `message`: `((chat_id), created_at)`
+
+
 #### Шардирование
-- user по `id`
-- session по `user_id`
-- vacancy_response по `vacancy_id` (просмотр откликов на вакансию происходит чаще, чем пользователь просматривает все свои отклики, поэтому выгоднее, чем по `user_id`)
-- connection по `user1_id`
-- connection_request по `receiver_id` (нужно смотреть все отправлены запросы)
-- post по `user_id`
-- like по `post_id`
-- comment по `post_id`
-- chat по `id`
-- user_chat по `user_id` (важнее показать пользователю все его чаты, чем загрузить участников чата)
-- message по `chat_id`
+Шардируем следующие таблицы, т.к. из-за большого объема данных индексы не поместятся в оперативную память и будет слишком долгое чтение:  
+- `vacancy_response` по `vacancy_id` (просмотр откликов на вакансию происходит чаще, чем пользователь просматривает все свои отклики, поэтому выгоднее, чем по `user_id`)
+- `connection` по `user1_id`
+- `connection_request` по `receiver_id` (просмотр входящих запросов происходит чаще, чем отправленных)
+- `post` по `user_id`
+- `comment` по `post_id`
+- `user_chat` по `user_id` (просмотр всех своих чатов пользователем происходит чаще, чем загрузка участников чата)
+- `message` по `chat_id`
+
+Шардируем следующие таблицы из-за большой нагрузки на запись:  
+- `like` по `post_id`
+- `like_counter` по `post_id`
 
 #### Резервирование
 - в Cassandra использовать репликацию с 3мя репликами в каждом дата-центре с уровнем консистентности LOCAL_QUORUM и стратегией NetworkTopologyStrategy. Такая схема позволяет расположить реплики на разных стойках в одном дата-центре, обеспечить консистентность данных и минимизировать задержки внутри дата-центра
