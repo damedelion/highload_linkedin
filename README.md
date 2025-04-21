@@ -255,7 +255,7 @@ BGP Anycast для маршрутизации трафика в ближайши
 Большая часть данных хранится в Cassandra -- NoSQL БД, в которой основным механизмом эффективного доступа является партиционириование с использованием `PRIMARY KEY`, состоящего из `partition key` (уникальный ключ) и `clustering columns` (столбцы, на основе которых происходит кластеризация данных), а не применение индексов:
 - `worker`: `((company_id), role, is_active)`
 - `vacancy`: `((company_id), is_active, created_at)`
-- `like`, `comment`, `repost`: `((post_id), user_id, created_at)`
+- `like`, `repost`: `((post_id), user_id, created_at)`
 
 По умолчанию `partition key` будем считать `id`, `clustering columns` пустые. 
 
