@@ -409,19 +409,19 @@ BGP Anycast для маршрутизации трафика в ближайши
 | Название | Хостинг | Конфигурация | Cores | Cnt | Покупка | Аренда |
 | --- | --- | --- | --- | --- | --- | --- |
 | Cassandra | own | Intel Xeon Silver 4314 16 Cores/64GB RAM/1xNVMe2TB/1x25Gb/s | 6 | 1 |  ~$5000 | - |
-| Cassandra | own | r6i.2xlarge (8vCPU/64GB) | 6 | 1 | - | $0.3334 |
+| Cassandra | AWS | r6i.2xlarge (8vCPU/64GB) | 6 | 1 | - | $0.3334 |
 | Kafka | own | Intel Xeon Silver 4314 16 Cores/64GB RAM/1xNVMe2TB/1x25Gb/s | 6 | 1 |  ~$5000 | - |
-| Kafka | own | r6i.2xlarge (8vCPU/64GB) | 6 | 1 | - | $0.3334 |
+| Kafka | AWS | r6i.2xlarge (8vCPU/64GB) | 6 | 1 | - | $0.3334 |
 | Redis | own | Intel Xeon Silver 4314 16 Cores/64GB RAM/1xNVMe2TB/1x25Gb/s | 2 | 1 |  ~$5000 | - |
-| Redis | own | r6i.2xlarge (8vCPU/64GB) | 2 | 1 | - | $0.3334 |
+| Redis | AWS | r6i.2xlarge (8vCPU/64GB) | 2 | 1 | - | $0.3334 |
 | Tarantool | own | Intel Xeon Silver 4314 16 Cores/64GB RAM/1xNVMe2TB/1x25Gb/s | 6 | 1 |  ~$5000 | - |
-| Tarantool | own | r6i.2xlarge (8vCPU/64GB) | 6 | 1 | - | $0.3334 |
+| Tarantool | AWS | r6i.2xlarge (8vCPU/64GB) | 6 | 1 | - | $0.3334 |
 | ElasticSearch | own | Intel Xeon Silver 4314 16 Cores/64GB RAM/1xNVMe2TB/1x25Gb/s | 1 | 1 |  ~$5000 | - |
-| ElasticSearch | own | r6i.2xlarge (8vCPU/64GB) | 1 | 1 | - | $0.3334 |
+| ElasticSearch | AWS | r6i.2xlarge (8vCPU/64GB) | 1 | 1 | - | $0.3334 |
 | ClickHouse | own | Intel Xeon Silver 4314 16 Cores/64GB RAM/1xNVMe2TB/1x25Gb/s | 1 | 1 |  ~$5000 | - |
-| ClickHouse | own | r6i.2xlarge (8vCPU/64GB) | 1 | 1 | - | $0.3334 |
+| ClickHouse | AWS | r6i.2xlarge (8vCPU/64GB) | 1 | 1 | - | $0.3334 |
 | Prometheus | own | Intel Xeon Silver 4314 16 Cores/64GB RAM/1xNVMe2TB/1x25Gb/s | 1 | 1 |  ~$5000 | - |
-| Prometheus | own | r6i.2xlarge (8vCPU/64GB) | 1 | 1 | - | $0.3334 |
+| Prometheus | AWS | r6i.2xlarge (8vCPU/64GB) | 1 | 1 | - | $0.3334 |
 
 #### Общая стоимость за 5 лет
 | Вариант               | Stateless       | Stateful    | Всего         |
