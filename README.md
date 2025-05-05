@@ -351,82 +351,84 @@ BGP Anycast для маршрутизации трафика в ближайши
 | AWS S3 | 4k | 3.2 |
 | Prometheus | 2k | 0.001 |
 
-Для развертывания stateless веб-сервисов на Go будем использовать Kubernetes,рассчитывая, что в среднем 1 экземпляр сервиса (одно ядро) может обработать ~100 RPS, используя 100 Mb RAM.
-
 ### Расчет ресурсов
+
+Для развертывания stateless веб-сервисов на Go будем использовать Kubernetes
+
+Грубое удельное потребления ресурсов на один экземпляр процесса, либо на одно ядро:
+
+| Технология| Характер сервиса | RPS | RAM |
+| ------ | ----- | ---- | --- |
+| Django | тяжелая бизнес-логика | 1 | 1 Gb |
+| C++, Go | тяжелая бизнес-логика | 10 | 100 Mb |
+| Django | средняя бизнес-логика | 10 | 100 Mb |
+| C++, Go | средняя бизнес-логика | 100 | 100 Mb |
+| Nginx | SSL handshake (CPS) | 500 | 10 Mb |
+| Django | легкое JSON API | 500 | 100 Mb |
+| С++, Go | легкое JSON API, СУБД | 5000 | 10 Mb |
 
 | Сервис | Пиковая нагрузка, RPS | CPU | RAM | Трафик, Gb/s |
 | --- | --- | --- | --- | --- |
-| chat | 3.5K | 35 | 35 GB | 0.003 |
-| auth | 4.7K | 47 | 47 GB | 0.0002 |
-| user | 12 | 1 | 1 GB | 0.00001 |
-| company | 560 | 6 | 6 GB | 0.00001 |
-| post | 8.7K | 87 | 87 GB | 1016 |
-| vacancy | 620 | 7 | 7 GB | 0.085 |
-| search | 1.5K | 15 | 15 GB | 0.001 |
-| recommendation | 8.7K | 87 | 87 GB | 0.01 |
-| connection | 900 | 9 | 9 GB | 0.0001 |
-| like | 1.7K | 17 | 17 GB | 0.0001 |
-| comment | 200 | 2 | 2 GB | 0.00001 |
-| repost | 1 | 1 | 1 GB | 0.00001 |
-| stats | 1.9K | 19 | 19 GB | 0.002 |
-| L4 балансировщики | 21.7K | 217 | 217 GB | 148.97 |
-| Envoy | 21.7K | 217 | 217 GB | 148.97 |
-| Cassandra | 28.5K | 300 | 1.5 TB | 0.114 |
-| Kafka | 27.3K | 100 | 256 GB | 0.0437 |
-| Redis | 4.5K | 45 | 90 GB | 0.0036 |
-| Tarantool | 27K | 270 | 540 GB | 0.0086 |
-| ElasticSearch | 1.4K | 20 | 40 GB | 0.0112 |
-| ClickHouse | 2K | 20 | 40 GB | 0.001 |
+| chat | 3.5K | 35 | 3.5 Gb | 0.003 |
+| auth | 4.7K | 1 | 10 Mb | 0.0002 |
+| user | 12 | 1 | 100 Mb | 0.00001 |
+| company | 560 | 1 | 10 Mb | 0.00001 |
+| post | 8.7K | 87 | 87 Gb | 1016 |
+| vacancy | 620 | 1 | 10 Mb | 0.085 |
+| search | 1.5K | 15 | 15 Gb | 0.001 |
+| recommendation | 8.7K | 870 | 87 Gb | 0.01 |
+| connection | 900 | 1 | 10 Mb | 0.0001 |
+| like | 1.7K | 1 | 10 Mb | 0.0001 |
+| comment | 200 | 1 | 1 Mb | 0.00001 |
+| repost | 1 | 1 | 1 Mb | 0.00001 |
+| stats | 1.9K | 19 | 1.9 Gb | 0.002 |
+| API-Gateway | 21.7K | 2170 | 217 Gb | 148.97 |
+| L4 балансировщики | 21.7K | 44 | 440 Mb | 148.97 |
+| Envoy | 21.7K | 44 | 440 Mb | 148.97 |
+| Cassandra | 28.5K | 6 | 60 Mb | 0.114 |
+| Kafka | 27.3K | 6 | 6 Mb | 0.0437 |
+| Redis | 4.5K | 2 | 20 Mb | 0.0036 |
+| Tarantool | 27K | 6 | 60 Mb | 0.0086 |
+| ElasticSearch | 1.4K | 1 | 10 Mb | 0.0112 |
+| ClickHouse | 2K | 1 | 10 Mb | 0.001 |
 | AWS S3 | 4K | - | - | 3.2 |
-| Prometheus | 2K | 10 | 20 GB | 0.001 |
+| Prometheus | 2K | 1 | 10 Mb | 0.001 |
 
 ### Определение конфигураций
 
 #### Stateless-сервисы (Kubernetes Pods)
 
-| Сервис | CPU/r | CPU/l | RAM/r | RAM/l | Cnt | Хостинг | Конфигурация (на ноду) | Cores | Cnt | Покупка | Аренда |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| chat | 0.5 | 1 | 1 GB | 2 GB | 35 | AWS | m6i.xlarge (4vCPU/16GB) | 4 | 9 | - | $0.34/h |
-| auth | 0.5 | 1 | 1 GB | 2 GB | 47 | AWS | m6i.xlarge (4vCPU/16GB) | 4 | 12 | - | $0.34/h |
-| user | 0.1 | 0.5 | 0.5 GB | 1 GB | 1 | AWS | t3.small (2vCPU/2GB) | 2 | 1 | - | $0.02/h |
-| company | 0.5 | 1 | 1 GB | 2 GB | 6 | AWS | m6i.large (2vCPU/8GB) | 2 | 3 | - | $0.17/h |
-| post | 1 | 2 | 2 GB | 4 GB | 87 | AWS | m6i.2xlarge (8vCPU/32GB) | 8 | 11 | - | $0.68/h |
-| vacancy | 0.5 | 1 | 1 GB | 2 GB | 7 | AWS | m6i.large (2vCPU/8GB) | 2 | 4 | - | $0.17/h |
-| search | 1 | 2 | 2 GB | 4 GB | 15 | AWS | m6i.2xlarge (8vCPU/32GB) | 8 | 2 | - | $0.68/h |
-| recommendation | 1 | 2 | 2 GB | 4 GB | 87 | AWS | m6i.2xlarge (8vCPU/32GB) | 8 | 11 | - | $0.68/h |
-| connection | 0.5 | 1 | 1 GB | 2 GB | 9 | AWS | m6i.large (2vCPU/8GB) | 2 | 5 | - | $0.17/h |
-| like | 0.5 | 1 | 1 GB | 2 GB | 17 | AWS | m6i.large (2vCPU/8GB) | 2 | 9 | - | $0.17/h |
-| comment | 0.2 | 0.5 | 0.5 GB | 1 GB | 2 | AWS | t3.medium (2vCPU/4GB) | 2 | 1 | - | $0.05/h |
-| repost | 0.1 | 0.2 | 0.2 GB | 0.5 GB | 1 | AWS | t3.micro (2vCPU/1GB) | 2 | 1 | - | $0.01/h |
-| stats | 0.5 | 1 | 1 GB | 2 GB | 19 | AWS | m6i.large (2vCPU/8GB) | 2 | 10 | - | $0.17/h |
-| L4 балансировщики | 2 | 4 | 4 GB | 8 GB | 217 | AWS | c6i.4xlarge (16vCPU/32GB) | 16 | 14 | - | $1.36/h |
-| Envoy | 2 | 4 | 4 GB | 8 GB | 217 | AWS | c6i.4xlarge (16vCPU/32GB) | 16 | 14 | - | $1.36/h |
+| Название | Хостинг | Конфигурация | Cores | Cnt | Покупка | Аренда |
+| --- | --- | --- | --- | --- | --- | --- |
+| kubenode | own | Intel Xeon Silver 4314 16 Cores/64GB RAM/1xNVMe2TB/1x25Gb/s | 1034 | 65 |  ~$5000 | - |
+| kubenode | AWS | m6i.2xlarge (8vCPU/32GB) | 1034 | 130 | - | $0.0635 |
+
 
 #### Stateful-сервисы (БД и очереди)
 
-| Сервис | Хостинг | Конфигурация (на ноду) | Cores | Cnt | Покупка | Аренда | CPU/r | CPU/l | RAM/r | RAM/l |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Cassandra | Own DC | 2xEPYC 7513/128GB/4xNVMe2TB/25Gb/s | 32 | 20 | $18k | - | 16 | 32 | 64 GB | 128 GB |
-| Kafka | AWS | r6i.4xlarge (16vCPU/128GB/2xNVMe1TB) | 16 | 10 | - | $1.70/h | 8 | 16 | 32 GB | 64 GB |
-| Redis | AWS | r6i.2xlarge (8vCPU/64GB/1xNVMe500GB) | 8 | 6 | - | $0.85/h | 4 | 8 | 16 GB | 32 GB |
-| Tarantool | Own DC | 2xXeon 6338/64GB/2xNVMe2TB/25Gb/s | 32 | 30 | $12k | - | 16 | 32 | 32 GB | 64 GB |
-| ElasticSearch | AWS | r6i.2xlarge (8vCPU/64GB/1xNVMe1TB) | 8 | 5 | - | $0.85/h | 4 | 8 | 16 GB | 32 GB |
-| ClickHouse | AWS | r6i.2xlarge (8vCPU/64GB/1xNVMe1TB) | 8 | 3 | - | $0.85/h | 4 | 8 | 16 GB | 32 GB |
-| Prometheus | AWS | r6i.xlarge (4vCPU/32GB/1xNVMe500GB) | 4 | 3 | - | $0.42/h | 2 | 4 | 8 GB | 16 GB |
+| Название | Хостинг | Конфигурация | Cores | Cnt | Покупка | Аренда |
+| --- | --- | --- | --- | --- | --- | --- |
+| Cassandra | own | Intel Xeon Silver 4314 16 Cores/64GB RAM/1xNVMe2TB/1x25Gb/s | 6 | 1 |  ~$5000 | - |
+| Cassandra | own | r6i.2xlarge (8vCPU/64GB) | 6 | 1 | - | $0.3334 |
+| Kafka | own | Intel Xeon Silver 4314 16 Cores/64GB RAM/1xNVMe2TB/1x25Gb/s | 6 | 1 |  ~$5000 | - |
+| Kafka | own | r6i.2xlarge (8vCPU/64GB) | 6 | 1 | - | $0.3334 |
+| Redis | own | Intel Xeon Silver 4314 16 Cores/64GB RAM/1xNVMe2TB/1x25Gb/s | 2 | 1 |  ~$5000 | - |
+| Redis | own | r6i.2xlarge (8vCPU/64GB) | 2 | 1 | - | $0.3334 |
+| Tarantool | own | Intel Xeon Silver 4314 16 Cores/64GB RAM/1xNVMe2TB/1x25Gb/s | 6 | 1 |  ~$5000 | - |
+| Tarantool | own | r6i.2xlarge (8vCPU/64GB) | 6 | 1 | - | $0.3334 |
+| ElasticSearch | own | Intel Xeon Silver 4314 16 Cores/64GB RAM/1xNVMe2TB/1x25Gb/s | 1 | 1 |  ~$5000 | - |
+| ElasticSearch | own | r6i.2xlarge (8vCPU/64GB) | 1 | 1 | - | $0.3334 |
+| ClickHouse | own | Intel Xeon Silver 4314 16 Cores/64GB RAM/1xNVMe2TB/1x25Gb/s | 1 | 1 |  ~$5000 | - |
+| ClickHouse | own | r6i.2xlarge (8vCPU/64GB) | 1 | 1 | - | $0.3334 |
+| Prometheus | own | Intel Xeon Silver 4314 16 Cores/64GB RAM/1xNVMe2TB/1x25Gb/s | 1 | 1 |  ~$5000 | - |
+| Prometheus | own | r6i.2xlarge (8vCPU/64GB) | 1 | 1 | - | $0.3334 |
 
-### Итоговые затраты (аренда AWS)
+#### Общая стоимость за 5 лет
+| Вариант               | Stateless       | Stateful    | Всего         |
+|-----------------------|-----------------|-------------|---------------|
+| Собственный DC        | $325,000        | $35,000     | $360,000      |
+| AWS (аренда)          | $3,633,444      | $102,263    | $3,735,707    |
 
-| Категория | Сервисы | Месячная стоимость |
-| --- | --- | --- |
-| Stateless | Все Pods (≈500 vCPU) | ~$15k |
-| Балансировщики | L4 + Envoy (28 нод) | ~$29k |
-| Kafka | 10 нод | ~$12k |
-| Redis | 6 нод | ~$3.6k |
-| ElasticSearch | 5 нод | ~$3k |
-| ClickHouse | 3 нод | ~$1.8k |
-| Prometheus | 3 нод | ~$0.9k |
-| Итого | | **≈$65k/мес** |
 
 
 ## Список источников
